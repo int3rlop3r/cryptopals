@@ -33,3 +33,15 @@ func TestChallenge2(t *testing.T) {
 		t.Errorf("expected: %s, got: %s", expect, z)
 	}
 }
+
+func TestChallenge3(t *testing.T) {
+	expect := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+	cypher := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+	key, err := xorFreq(cypher)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(key) != expect {
+		t.Errorf("expected: %s, got: %s", expect, key)
+	}
+}

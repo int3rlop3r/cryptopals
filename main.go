@@ -37,24 +37,54 @@ func xor(buff1, buff2 string) (string, error) {
 	return hex.EncodeToString(newBuff), nil
 }
 
-func xorFreq(s string) {
+// challenge: 3
+func xorFreq(s string) ([]byte, error) {
 	h1, err := hex.DecodeString(s)
 	if err != nil {
-		fmt.Printf("xorFreq: %s\n", err)
-		return
+		return nil, fmt.Errorf("xorFreq: %w", err)
 	}
+	var maxScore int
+	var cypherKey []byte
 	newBuff := make([]byte, len(h1), len(h1))
-	for a := 97; a <= 122; a++ {
+	for a := 65; a <= 122; a++ {
 		// key len should be same as cypher len (bytes)
 		key := bytes.Repeat([]byte{byte(a)}, len(h1))
 		for i := range key {
 			newBuff[i] = h1[i] ^ key[i]
 		}
-		fmt.Println("xor'ed:", string(newBuff))
+		score := freqCheck(newBuff)
+		if score > maxScore {
+			maxScore = score
+			cypherKey = key
+		}
 	}
+	return cypherKey, nil
+}
+
+func freqCheck(s []byte) int {
+	commLetters := "etaoin shrdlu"
+	score := 0
+	var countL int // count of lower-case
+	var countU int // count of upper-case
+	for i := 0; i < len(commLetters); i++ {
+		points := len(commLetters) - i
+		countL = bytes.Count(s, []byte{commLetters[i]})
+		if commLetters[i] != ' ' {
+			countU = bytes.Count(s, []byte{commLetters[i] - byte(32)})
+		} else {
+			countU = 0
+		}
+		score += points * (countL + countU)
+	}
+	return score
 }
 
 func main() {
 	s := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-	xorFreq(s)
+	key, err := xorFreq(s)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("key:", string(key))
 }
