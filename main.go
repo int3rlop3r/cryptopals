@@ -37,18 +37,6 @@ func xor(buff1, buff2 string) (string, error) {
 	return hex.EncodeToString(newBuff), nil
 }
 
-func nextKey(l int) <-chan []byte {
-	kCh := make(chan []byte)
-	go func() {
-		defer close(kCh)
-		for a := 97; a <= 122; a++ {
-			rep := bytes.Repeat([]byte{byte(a)}, l)
-			kCh <- rep
-		}
-	}()
-	return kCh
-}
-
 func xorFreq(s string) {
 	h1, err := hex.DecodeString(s)
 	if err != nil {
@@ -56,8 +44,9 @@ func xorFreq(s string) {
 		return
 	}
 	newBuff := make([]byte, len(h1), len(h1))
-	for key := range nextKey(len(h1)) {
-		//fmt.Println("key:", string(key))
+	for a := 97; a <= 122; a++ {
+		// key len should be same as cypher len (bytes)
+		key := bytes.Repeat([]byte{byte(a)}, len(h1))
 		for i := range key {
 			newBuff[i] = h1[i] ^ key[i]
 		}
