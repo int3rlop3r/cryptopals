@@ -1,64 +1,74 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 )
 
 // challenge: 1
-func hexTo64(s string) (string, error) {
+func hexTo64(s string) ([]byte, error) {
 	data, err := hex.DecodeString(s)
 	if err != nil {
-		return "", fmt.Errorf("hexto64: %w", err)
+		return nil, fmt.Errorf("hexto64: %w", err)
 	}
-	return base64.StdEncoding.EncodeToString(data), nil
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+	base64.StdEncoding.Encode(encoded, data)
+	return encoded, nil
 }
 
 // challenge: 2
-func xor(buff1, buff2 string) (string, error) {
+func fixedXOR(buff1, buff2 string) ([]byte, error) {
 	if len(buff1) != len(buff2) {
-		return "", errors.New("xor: strings must be of equal lengths")
+		return nil, errors.New("xor: strings must be of equal lengths")
 	}
 	hex1, err := hex.DecodeString(buff1)
 	if err != nil {
-		return "", fmt.Errorf("xor: %w", err)
+		return nil, fmt.Errorf("xor: %w", err)
 	}
 	hex2, err := hex.DecodeString(buff2)
 	if err != nil {
-		return "", fmt.Errorf("xor: %w", err)
+		return nil, fmt.Errorf("xor: %w", err)
 	}
-	newBuff := make([]byte, len(hex1), len(hex2))
-	for i := 0; i < len(hex1); i++ {
-		newBuff[i] = hex1[i] ^ hex2[i]
+	xorBytes(hex1, hex2)
+	encoded := make([]byte, hex.EncodedLen(len(hex2)))
+	hex.Encode(encoded, hex1)
+	return encoded, nil
+}
+
+func xorBytes(x, y []byte) {
+	for i := 0; i < len(x); i++ {
+		x[i] ^= y[i]
 	}
-	return hex.EncodeToString(newBuff), nil
 }
 
 // challenge: 3
-func xorFreq(s string) ([]byte, error) {
+func singleByteXOR(s string) ([]byte, []byte, error) {
 	h1, err := hex.DecodeString(s)
 	if err != nil {
-		return nil, fmt.Errorf("xorFreq: %w", err)
+		return nil, nil, fmt.Errorf("xorFreq: %w", err)
 	}
 	var maxScore int
 	var cypherKey []byte
-	newBuff := make([]byte, len(h1), len(h1))
-	for a := 65; a <= 122; a++ {
+	msg := make([]byte, len(h1))
+	for a := 32; a <= 126; a++ {
 		// key len should be same as cypher len (bytes)
 		key := bytes.Repeat([]byte{byte(a)}, len(h1))
-		for i := range key {
-			newBuff[i] = h1[i] ^ key[i]
-		}
-		score := freqCheck(newBuff)
+		xorBytes(h1, key)
+		score := freqCheck(h1)
 		if score > maxScore {
 			maxScore = score
 			cypherKey = key
+			copy(msg, h1)
 		}
 	}
-	return cypherKey, nil
+	return cypherKey, msg, nil
 }
 
 func freqCheck(s []byte) int {
@@ -79,12 +89,44 @@ func freqCheck(s []byte) int {
 	return score
 }
 
+func checkMsg(m []byte) bool {
+	for _, i := range m {
+		if 32 <= int(i) && int(i) <= 126 {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func main() {
-	s := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-	key, err := xorFreq(s)
+	f, err := os.Open("./challenge4.txt")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("key:", string(key))
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadBytes('\n')
+		if err != nil && err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Println("err:", err)
+			return
+		}
+		k, m, err := singleByteXOR(string(line[:len(line)-1])) // remove \n
+		if err != nil {
+			fmt.Println("err:", err)
+			continue
+			//return
+		}
+		//isValid := checkMsg(m)
+		//if !isValid {
+		//continue
+		//}
+		fmt.Println("line trimmed:", string(line[:len(line)-1]))
+		fmt.Println("key:", string(k))
+		fmt.Println("msg:", string(m))
+		fmt.Println(strings.Repeat("=", 20))
+	}
 }
