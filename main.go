@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 )
@@ -54,7 +55,7 @@ func singleByteXOR(s string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("xorFreq: %w", err)
 	}
-	var maxScore int
+	var maxScore float64
 	var cypherKey []byte
 	msg := make([]byte, len(h1))
 	for a := 32; a <= 126; a++ {
@@ -72,43 +73,34 @@ func singleByteXOR(s string) ([]byte, []byte, error) {
 	return cypherKey, msg, nil
 }
 
-func freqCheck(s []byte) int {
-	commLetters := "etaoin shrdlu"
-	score := 0
-	for _, i := range s {
-		if 32 <= int(i) && int(i) <= 126 {
+var freqs []float64 = []float64{0.37025, 0.067875, 0.123575, 0.19685, 0.5478, 0.105, 0.092325, 0.269875, 0.33295, 0.0047, 0.031425, 0.181325, 0.119025, 0.31665, 0.350075, 0.0829, 0.005125, 0.274425, 0.28625, 0.414675, 0.13115, 0.050475, 0.095475, 0.007875, 0.096325, 0.0032}
+
+func freqCheck(s []byte) float64 {
+	var score float64
+	charFreq := make(map[byte]float64)
+	sLower := bytes.ToLower(s)
+
+	for _, ch := range sLower {
+		if int(ch) < 32 || int(ch) > 126 {
+			//fmt.Println("broke:", string(ch), ", b:", int(ch))
+			return score // which is 0 at this point
+		}
+		_, ok := charFreq[ch]
+		if ok { // already counted this character
 			continue
 		}
-		return 0
+		charFreq[ch] = float64(bytes.Count(sLower, []byte{ch})) / float64(len(s))
 	}
 
-	var countL int // count of lower-case
-	var countU int // count of upper-case
-	for i := 0; i < len(commLetters); i++ {
-		points := len(commLetters) - i
-		countL = bytes.Count(s, []byte{commLetters[i]})
-		if commLetters[i] != ' ' {
-			countU = bytes.Count(s, []byte{commLetters[i] - byte(32)})
+	for _, ch := range sLower {
+		var freq float64
+		pos := int(ch) - 97
+		if pos < 0 || pos > 25 {
+			freq = 0
 		} else {
-			countU = 0
+			freq = freqs[pos] // get freq of the character
 		}
-		score += points * (countL + countU)
-	}
-
-	sLower := []byte(strings.ToLower(string(s)))
-
-	biGrams := []string{"th", "he", "in", "en", "nt", "re", "er", "an", "ti", "es", "on", "at", "se", "nd", "or", "ar", "al", "te", "co", "de", "to", "ra", "et", "ed", "it", "sa", "em", "ro"}
-	for i := 0; i < len(biGrams); i++ {
-		points := len(biGrams) - i
-		countL = bytes.Count(sLower, []byte(biGrams[i]))
-		score += points * countL
-	}
-
-	triGrams := []string{"the", "and", "tha", "ent", "ing", "ion", "tio", "for", "nde", "has", "nce", "edt", "tis", "oft", "sth", "men"}
-	for i := 0; i < len(triGrams); i++ {
-		points := len(triGrams) - i
-		countL = bytes.Count(sLower, []byte(triGrams[i]))
-		score += points * countL
+		score += math.Sqrt(charFreq[ch] * freq)
 	}
 	return score
 }
