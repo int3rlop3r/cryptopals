@@ -66,6 +66,7 @@ func singleByteXOR(s string) ([]byte, []byte, error) {
 			maxScore = score
 			cypherKey = key
 			copy(msg, h1)
+			//fmt.Println("score:", score, ", msg:", string(msg))
 		}
 	}
 	return cypherKey, msg, nil
@@ -74,6 +75,13 @@ func singleByteXOR(s string) ([]byte, []byte, error) {
 func freqCheck(s []byte) int {
 	commLetters := "etaoin shrdlu"
 	score := 0
+	for _, i := range s {
+		if 32 <= int(i) && int(i) <= 126 {
+			continue
+		}
+		return 0
+	}
+
 	var countL int // count of lower-case
 	var countU int // count of upper-case
 	for i := 0; i < len(commLetters); i++ {
@@ -85,6 +93,22 @@ func freqCheck(s []byte) int {
 			countU = 0
 		}
 		score += points * (countL + countU)
+	}
+
+	sLower := []byte(strings.ToLower(string(s)))
+
+	biGrams := []string{"th", "he", "in", "en", "nt", "re", "er", "an", "ti", "es", "on", "at", "se", "nd", "or", "ar", "al", "te", "co", "de", "to", "ra", "et", "ed", "it", "sa", "em", "ro"}
+	for i := 0; i < len(biGrams); i++ {
+		points := len(biGrams) - i
+		countL = bytes.Count(sLower, []byte(biGrams[i]))
+		score += points * countL
+	}
+
+	triGrams := []string{"the", "and", "tha", "ent", "ing", "ion", "tio", "for", "nde", "has", "nce", "edt", "tis", "oft", "sth", "men"}
+	for i := 0; i < len(triGrams); i++ {
+		points := len(triGrams) - i
+		countL = bytes.Count(sLower, []byte(triGrams[i]))
+		score += points * countL
 	}
 	return score
 }
@@ -120,10 +144,10 @@ func main() {
 			continue
 			//return
 		}
-		//isValid := checkMsg(m)
-		//if !isValid {
-		//continue
-		//}
+		isValid := checkMsg(m)
+		if !isValid {
+			continue
+		}
 		fmt.Println("line trimmed:", string(line[:len(line)-1]))
 		fmt.Println("key:", string(k))
 		fmt.Println("msg:", string(m))
