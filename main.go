@@ -73,44 +73,65 @@ func singleByteXOR(s string) ([]byte, []byte, error) {
 	return cypherKey, msg, nil
 }
 
-var freqs []float64 = []float64{0.37025, 0.067875, 0.123575, 0.19685, 0.5478, 0.105, 0.092325, 0.269875, 0.33295, 0.0047, 0.031425, 0.181325, 0.119025, 0.31665, 0.350075, 0.0829, 0.005125, 0.274425, 0.28625, 0.414675, 0.13115, 0.050475, 0.095475, 0.007875, 0.096325, 0.0032}
+var freqs []float64 = []float64{
+	0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015, // A-G
+	0.06094, 0.06966, 0.00153, 0.00772, 0.04025, 0.02406, 0.06749, // H-N
+	0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056, 0.02758, // O-U
+	0.00978, 0.02360, 0.00150, 0.01974, 0.00074, // V-Z
+}
+
+func isValidSymbol(c rune) bool {
+	symbols := " .,;'"
+	for _, s := range symbols {
+		if c == s {
+			return true
+		}
+	}
+	//fmt.Printf("'%c' is not a vlid symbol.\n", c)
+	return false
+}
 
 func freqCheck(s []byte) float64 {
 	var score float64
 	charFreq := make(map[byte]float64)
-	sLower := bytes.ToLower(s)
+	sUpper := bytes.ToUpper(s)
+	totalChars := float64(len(s))
+	for _, ch := range sUpper {
+		//if isValidSymbol(rune(ch)) {
+		//continue
+		//}
 
-	for _, ch := range sLower {
-		if int(ch) < 32 || int(ch) > 126 {
-			//fmt.Println("broke:", string(ch), ", b:", int(ch))
-			return score // which is 0 at this point
-		}
+		//if ch < 'A' || ch > 'Z' {
+		//return score // which is 0 at this point
+		//}
+
 		_, ok := charFreq[ch]
 		if ok { // already counted this character
 			continue
 		}
-		charFreq[ch] = float64(bytes.Count(sLower, []byte{ch})) / float64(len(s))
+		charFreq[ch] = float64(bytes.Count(sUpper, []byte{ch})) / totalChars
 	}
 
-	for _, ch := range sLower {
+	for ch, calcF := range charFreq {
+		pos := ch - 'A'
 		var freq float64
-		pos := int(ch) - 97
-		if pos < 0 || pos > 25 {
+		if int(pos) > 25 { // coz 26 letters
 			freq = 0
 		} else {
 			freq = freqs[pos] // get freq of the character
 		}
-		score += math.Sqrt(charFreq[ch] * freq)
+		score += math.Sqrt(calcF * freq)
 	}
+	//fmt.Println("score:", score)
 	return score
 }
 
 func checkMsg(m []byte) bool {
-	for _, i := range m {
-		if 32 <= int(i) && int(i) <= 126 {
-			continue
+	for _, ch := range bytes.ToUpper(m) {
+		if (ch < 'A' || ch > 'Z') && !isValidSymbol(rune(ch)) {
+			fmt.Printf("%c is not valid\n", ch)
+			return false
 		}
-		return false
 	}
 	return true
 }
